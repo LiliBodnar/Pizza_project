@@ -1,47 +1,53 @@
-from OrderProcessing import OrderProcessing
-from AccountManagement import AccountManagement
-from DeliveryManagement import DeliveryManagement
-from Database import execute_query, fetch_results
-import mysql.connector
+from AccountManagement import AccountManagement  # Import the class for account management
+from OrderProcessing import OrderProcessing  # Import the class for order processing
+from DeliveryManagement import DeliveryManagement  # Import the class for delivery management
+from Database import connect  # Import the function to connect to the database
 import datetime
 
-def display_menu():
+def display_menu(cursor):
+    # Fetch the menu items from the database
+    cursor.execute("SELECT ItemID, ItemName, Price FROM Item")
+    items = cursor.fetchall()
+
     print("Menu:")
-    items = fetch_results("SELECT ItemID, ItemName, Price FROM Item")  # Fetch items from the database
-    if items:
-        for item in items:
-            print(f"{item[0]}: {item[1]} - ${item[2]:.2f}")
+    for item in items:
+        print(f"{item[0]}: {item[1]} - ${item[2]}")
 
 def main():
     print("Welcome to the Pizza Delivery System!")
-    
-    # Step 1: Account Management
-    account_manager = AccountManagement()
-    account = account_manager.login_or_create_account()
+    db = connect()
+    cursor = db.cursor()
 
+    # Step 1: Account Management
+    account_manager = AccountManagement(cursor)
+    print("Do you want to (1) log in or (2) sign up?")
+    choice = input("Enter 1 for log in, 2 for sign up: ")
+
+    if choice == '1':
+        account = account_manager.login_or_create_account()
+    elif choice == '2':
+        account = account_manager.sign_up()
+    
     if account:
-        print(f"Welcome back, {account['Username']}!")
+        print(f"Welcome, {account['Username']}!")
         
         # Step 2: Display Menu
-        display_menu()
+        display_menu(cursor)
         
-        # Assuming you have logic to capture delivery address ID and items
-        delivery_address_id = 1  # Example ID, replace with actual logic
-        items = [(1, 2), (2, 1)]  # Example items: (ItemID, Quantity)
-
         # Step 3: Place Order
-        order_processor = OrderProcessing()
-        order_details = order_processor.place_order(account['CustomerID'], delivery_address_id, items)
+        order_processor = OrderProcessing(cursor)
+        items = [(1, 2), (2, 1)]  # Example items and quantities
+        order_details = order_processor.place_order(account['CustomerID'], account['DeliveryAddressID'], items)
 
         # Step 4: Manage Delivery
-        delivery_manager = DeliveryManagement()
-        estimated_delivery_time = delivery_manager.calculate_delivery_time(datetime.datetime.now(), 30)  # Example: 30 minutes delivery time
-        delivery_status = delivery_manager.track_delivery(order_details['OrderID'])
+        delivery_manager = DeliveryManagement(cursor)
+        delivery_status = delivery_manager.track_delivery(order_details)
 
         print(f"Your order status: {delivery_status}")
-        print(f"Estimated delivery time: {estimated_delivery_time}")
     
     print("Thank you for using the Pizza Delivery System!")
+    cursor.close()
+    db.close()
 
 if __name__ == "__main__":
     main()
