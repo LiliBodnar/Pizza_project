@@ -2,19 +2,11 @@ from AccountManagement import AccountManagement  # Import the class for account 
 from OrderProcessing import OrderProcessing  # Import the class for order processing
 from DeliveryManagement import DeliveryManagement  # Import the class for delivery management
 from Database import connect  # Import the function to connect to the database
+from Menu import display_menu
 import datetime
 
-def display_menu(cursor):
-    # Fetch the menu items from the database
-    cursor.execute("SELECT ItemID, ItemName, Price FROM Item")
-    items = cursor.fetchall()
-
-    print("Menu:")
-    for item in items:
-        print(f"{item[0]}: {item[1]} - ${item[2]}")
-
 def main():
-    print("Welcome to the Pizza Delivery System!")
+    print("Welcome to Gusto D'Italia!")
     db = connect()
     cursor = db.cursor()
 
@@ -24,28 +16,39 @@ def main():
     choice = input("Enter 1 for log in, 2 for sign up: ")
 
     if choice == '1':
-        account = account_manager.login_or_create_account()
+        account = account_manager.login()
     elif choice == '2':
-        account = account_manager.sign_up()
+        account = account_manager.signup()
     
     if account:
-        print(f"Welcome, {account['Username']}!")
-        
-        # Step 2: Display Menu
-        display_menu(cursor)
-        
-        # Step 3: Place Order
-        order_processor = OrderProcessing(cursor)
-        items = [(1, 2), (2, 1)]  # Example items and quantities
-        order_details = order_processor.place_order(account['CustomerID'], account['DeliveryAddressID'], items)
+        print("")
+        print(f"Welcome, {account['FirstName']}!")
+        print("")
+
+        choice = input("(1) Menu    (2) Order    (3) Account    (4) Exit :")
+
+        if choice == '1':
+            # Step 2: Display Menu
+            display_menu(cursor)
+        elif choice == '2':
+            # Step 3: Place Order
+            ##order_processor = OrderProcessing(cursor)
+            ##items = [(1, 2), (2, 1)]  # Example items and quantities
+            ##order_details = order_processor.place_order(account['CustomerID'], account['DeliveryAddressID'], items)
+            print("")
+        elif choice == '4':
+            print("Thank you for choosing Gusto D'Italia!")
+            cursor.close()
+            db.close()
+            exit()
 
         # Step 4: Manage Delivery
-        delivery_manager = DeliveryManagement(cursor)
-        delivery_status = delivery_manager.track_delivery(order_details)
+        ##delivery_manager = DeliveryManagement(cursor)
+        ##delivery_status = delivery_manager.track_delivery(order_details)
 
-        print(f"Your order status: {delivery_status}")
+        ##print(f"Your order status: {delivery_status}")
     
-    print("Thank you for using the Pizza Delivery System!")
+    print("Thank you for choosing Gusto D'Italia!")
     cursor.close()
     db.close()
 
