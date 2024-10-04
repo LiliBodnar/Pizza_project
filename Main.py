@@ -4,6 +4,14 @@ from DeliveryManagement import DeliveryManagement  # Import the class for delive
 from Database import connect  # Import the function to connect to the database
 from Menu import display_menu
 import datetime
+import os
+
+def clear_screen():
+    # Check the operating system and clear the screen accordingly
+    if os.name == 'nt':  # 'nt' is for Windows
+        os.system('cls')
+    else:  # For macOS and Linux
+        os.system('clear')
 
 def main():
     print("Welcome to Gusto D'Italia!")
@@ -21,14 +29,16 @@ def main():
         account = account_manager.signup()
     
     if account:
-        print("")
+        clear_screen()
         print(f"Welcome, {account['FirstName']}!")
         print("")
 
-        choice = input("(1) Menu    (2) Order    (3) Account    (4) Exit :")
+        print("Choose the number of the option for how you would like to proceed")
+        choice = input("(1) Menu    (2) Order    (3) Account    (4) Exit ->")
 
         if choice == '1':
             # Step 2: Display Menu
+            clear_screen()
             display_menu(cursor)
         elif choice == '2':
             # Step 3: Place Order
