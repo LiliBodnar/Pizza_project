@@ -1,4 +1,4 @@
-def display_menu(cursor): 
+def display_menu(cursor):
     # Fetch the menu items and their details from the database
     cursor.execute("SELECT ItemID, ItemName, ItemType FROM Item")
     items = cursor.fetchall()
@@ -41,6 +41,8 @@ def display_menu(cursor):
     print("------------------Menu:------------------")
     print("")
 
+    item_number = 1  # Start numbering the menu items
+
     # Display Pizzas
     pizza_items = [item for item in items if item[2] == 'Pizza']
     if pizza_items:
@@ -63,12 +65,13 @@ def display_menu(cursor):
 
             restrictions_str = ", ".join(restrictions_list) if restrictions_list else " "
             if isinstance(price, (int, float)):
-                print(f"- {item_name:<20} {restrictions_str:<20} €{price:.2f}")
+                print(f"{item_number}. {item_name:<20} {restrictions_str:<20} €{price:.2f}")
             else:
-                print(f"- {item_name:<20} {restrictions_str:<20} €{price}")
-                
-            print(f"  {ingredients}")  
+                print(f"{item_number}. {item_name:<20} {restrictions_str:<20} €{price}")
+
+            print(f"   {ingredients}")  # Print ingredients below
             print("")
+            item_number += 1  # Increment the item number
 
     # Display Drinks
     drink_items = [item for item in items if item[2] == 'Drink']
@@ -78,7 +81,8 @@ def display_menu(cursor):
             item_id = item[0]
             item_name = item[1]
             price = prices_dict.get(item_id, "N/A")
-            print(f"- {item_name:<40} €{price:.2f}")
+            print(f"{item_number}. {item_name:<40} €{price:.2f}")
+            item_number += 1  # Increment the item number
 
     # Display Desserts
     dessert_items = [item for item in items if item[2] == 'Dessert']
@@ -89,7 +93,6 @@ def display_menu(cursor):
             item_name = item[1]
             price = prices_dict.get(item_id, "N/A")
             restrictions = restrictions_dict.get(item_id, {})
-            #ingredients = ", ".join(ingredients_dict.get(item_id, []))
             restrictions_list = []
             if restrictions.get('Vegetarian'):
                 restrictions_list.append("V")
@@ -101,7 +104,7 @@ def display_menu(cursor):
                 restrictions_list.append("LF")
 
             restrictions_str = ", ".join(restrictions_list) if restrictions_list else " "
-            print(f"- {item_name:<20} {restrictions_str:<20} €{price:.2f}")
-            #print(f"  {ingredients}")  # Print ingredients below
+            print(f"{item_number}. {item_name:<20} {restrictions_str:<20} €{price:.2f}")
+            item_number += 1  # Increment the item number
 
-    print()  
+    print()  # New line for better readability
