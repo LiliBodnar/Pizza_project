@@ -240,7 +240,7 @@ class AccountManagement:
         customer_id = account['CustomerID']
 
         cursor.execute("""
-            SELECT c.NumerOfPizzas
+            SELECT c.NumberOfPizzas
             FROM Customer c
             WHERE c.CustomerID = %s
         """, (customer_id,))

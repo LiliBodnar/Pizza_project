@@ -1,7 +1,10 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
+import time
+import threading
 from Menu import display_menu
 from AccountManagement import AccountManagement
+from DeliveryManagement import DeliveryManagement
 from decimal import Decimal
 
 def clear_screen():
@@ -278,10 +281,125 @@ class OrderProcessing:
         clear_screen()
 
         if choice == '1':
-            #OrderProcessing.place_order(cursor, account, items_ordered)
+            OrderProcessing.place_order(cursor, account, items_ordered)
             print("Placing order")
         elif choice == '2':
             print("Going back to menu...")
         elif choice == '3':
             print("Thank you for using Gusto d'Italia!")
             exit()
+
+    def place_order(cursor, account, items_ordered):
+        customer_id = account['CustomerID']
+
+        cursor.execute("""
+            SELECT cd.DeliveryAddressID
+            FROM CustomerDeliveryAddress cd
+            INNER JOIN Customer c ON c.CustomerID = cd.CustomerID
+            WHERE c.CustomerID = %s
+        """, (customer_id,))
+
+        delivery_address = cursor.fetchone()  # Fetch one record
+    
+        # Step 1: Insert the order into the Order table
+        cursor.execute("""
+            INSERT INTO `Order` (CustomerID, DeliveryAddressID, OrderPlacementTime)
+            VALUES (%s, %s,NOW())
+        """, (customer_id, delivery_address))
+
+        cursor.connection.commit()
+    
+        # Retrieve the newly created OrderID
+        order_id = cursor.lastrowid
+    
+        # Step 2: Insert order items into the OrderItem table
+        for item in items_ordered:
+            item_id = item[0][0]  # Either the item number or '9' for personalized pizza
+            quantity = item[1]    # Quantity ordered
+        
+            # Insert the order item into OrderItem
+            cursor.execute("""
+                INSERT INTO OrderItem (OrderID, ItemID, Quantity)
+                VALUES (%s, %s, %s)
+            """, (order_id, item_id, quantity))
+        
+            # Retrieve the newly created OrderItemID
+            order_item_id = cursor.lastrowid
+        
+            if item_id == 9:  # Personalized pizza
+                for ingredient_id, ingr_quantity in item[0][1]:  # Unpack ingredient details
+                    # Insert each ingredient of the personalized pizza
+                    cursor.execute("""
+                        INSERT INTO CustomPizzaIngredients (OrderItemID, IngredientID, Quantity)
+                        VALUES (%s, %s, %s)
+                    """, (order_item_id, ingredient_id, ingr_quantity))
+
+        cursor.connection.commit()
+
+        # Step 3: Insert the number of pizzas into Customer
+
+        cursor.execute("""
+            SELECT SUM(oi.Quantity)
+            FROM `Order` o
+            JOIN OrderItem oi ON o.OrderID = oi.OrderID
+            WHERE o.OrderID = %s AND oi.ItemID IN (SELECT ItemID FROM Item WHERE ItemType = 'Pizza')
+        """, (order_id,))
+
+        number_of_pizzas = cursor.fetchone()
+        print(number_of_pizzas[0])
+
+        cursor.execute("""
+                UPDATE Customer
+                SET NumberOfPizzas = NumberOfPizzas + %s
+                WHERE CustomerID = %s
+            """, (number_of_pizzas, customer_id))
+        
+        cursor.connection.commit()
+
+        delivery_manager = DeliveryManagement(cursor)
+
+        print("Thank you for your order! You have 5 minutes to cancel your order.")
+        
+
+        # 4. Retrieve the order status and estimated delivery time
+        #order_status_info = delivery_manager.get_order_status(order_id)
+
+        # 5. Show order status, estimated delivery time, and cancellation window
+        #if order_status_info:
+            #print(f"Order Status: {order_status_info['OrderStatus']}")
+            #print(f"Estimated Delivery Time: {order_status_info['EstimatedDeliveryTime']}")
+            #print(f"Remaining Time to Cancel: {order_status_info['RemainingTime']}")
+
+        # 6. Assign and group the order to a delivery person
+        #assignment_message = delivery_manager.assign_and_group_orders(order_id)
+        #print(assignment_message)
+        #order_processor = OrderProcessing(cursor)
+
+        # 7. Start a timer for cancellation, handling user input in a separate thread if needed
+        #cancel_timer_thread = threading.Thread(target=order_processor.start_cancel_timer, args=(order_id,))
+        #cancel_timer_thread.start()
+
+        print(f"Your order {order_id} has been placed successfully!")
+        return
+    
+    def start_cancel_timer(self, order_id):
+        """
+        Start a timer to handle order cancellation based on user input.
+
+        :param order_id: The ID of the order to monitor for cancellation.
+        """
+        time.sleep(60)  # Wait for 5 minutes
+
+        delivery_manager = DeliveryManagement(self.cursor)
+
+        # After waiting, check if the order can still be canceled
+        remaining_info = delivery_manager.get_order_status(order_id)
+        if remaining_info and remaining_info['RemainingTime'] == "Thank you for ordering, the window for cancellation is now closed.":
+            print("You can no longer cancel your order.")
+        else:
+            # Check if user wants to cancel the order
+            user_input = input("Do you want to cancel your order? (yes/no): ")
+            if user_input.lower() == 'yes':
+                cancel_message = delivery_manager.cancel_order(order_id)
+                print(cancel_message)
+
