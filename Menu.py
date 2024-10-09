@@ -7,13 +7,13 @@ def display_menu(cursor):
     ingredients_dict = {}
     prices_dict = {}
     cursor.execute("""
-        SELECT il.ItemID, i.IngredientName, i.Price 
+        SELECT il.ItemID, i.IngredientID, i.IngredientName, i.Price 
         FROM IngredientList il 
         JOIN Ingredient i ON il.IngredientID = i.IngredientID
     """)
     ingredient_list = cursor.fetchall()
 
-    for item_id, ingredient_name, price in ingredient_list:
+    for item_id, ingredient_id, ingredient_name, price in ingredient_list:
         if item_id not in ingredients_dict:
             ingredients_dict[item_id] = []
             prices_dict[item_id] = 0  # Initialize the price for the item
@@ -38,6 +38,7 @@ def display_menu(cursor):
             'LactoseFree': bool(lactose_free)
         }
 
+
     print("------------------Menu:------------------")
     print("")
 
@@ -48,16 +49,18 @@ def display_menu(cursor):
         item_ingredients = [ingr for ingr in ingredient_list if ingr[0] == item_id]
         item_restrictions = {'Vegan': True, 'Vegetarian': True, 'GlutenFree': True, 'LactoseFree': True}
 
-        for _, ingredient_name, price in item_ingredients:
-            ingredient_id = next((ing_id for ing_id, ingr_name, _ in ingredient_list if ingr_name == ingredient_name), None)
-            if ingredient_id is not None:
+        if(item_id == 9):
+            item_restrictions = {'Vegan': False, 'Vegetarian': False, 'GlutenFree': False, 'LactoseFree': False}
+        else:
+            for item_id, ingredient_id, ingredient_name, price in item_ingredients:
                 ingr_restrictions = ingredient_restrictions.get(ingredient_id, {})
-                # If any restriction fails, set it to False
-                item_restrictions['Vegan'] &= ingr_restrictions.get('Vegan', False)
-                item_restrictions['Vegetarian'] &= ingr_restrictions.get('Vegetarian', False)
-                item_restrictions['GlutenFree'] &= ingr_restrictions.get('GlutenFree', False)
-                item_restrictions['LactoseFree'] &= ingr_restrictions.get('LactoseFree', False)
-
+                
+                # Update restrictions only if true for any ingredient
+                item_restrictions['Vegan'] = item_restrictions['Vegan'] and ingr_restrictions.get('Vegan', True)
+                item_restrictions['Vegetarian'] = item_restrictions['Vegetarian'] and ingr_restrictions.get('Vegetarian', True)
+                item_restrictions['GlutenFree'] = item_restrictions['GlutenFree'] and ingr_restrictions.get('GlutenFree', True)
+                item_restrictions['LactoseFree'] = item_restrictions['LactoseFree'] and ingr_restrictions.get('LactoseFree', True)
+    
         return item_restrictions
 
     # Display Pizzas

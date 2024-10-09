@@ -352,7 +352,7 @@ class OrderProcessing:
                 UPDATE Customer
                 SET NumberOfPizzas = NumberOfPizzas + %s
                 WHERE CustomerID = %s
-            """, (number_of_pizzas, customer_id))
+            """, (number_of_pizzas[0], customer_id))
         
         cursor.connection.commit()
 

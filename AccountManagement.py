@@ -190,7 +190,7 @@ class AccountManagement:
         # Fetch the customer details and associated delivery address
         cursor.execute("""
             SELECT a.Username, c.FirstName, c.LastName, c.Phone, c.Birthdate,
-                da.StreetName, da.HouseNumber, da.PostalCode, c.NumerOfPizzas
+                da.StreetName, da.HouseNumber, da.PostalCode, c.NumberOfPizzas
             FROM Customer c
             JOIN Account a ON c.AccountID = a.AccountID
             LEFT JOIN CustomerDeliveryAddress cda ON c.CustomerID = cda.CustomerID
@@ -236,7 +236,7 @@ class AccountManagement:
         """, (new_phone, customer_id))
         print("Phone number updated successfully.")
 
-    def check_pizza_milestone(cursor, account):
+    def check_pizza_milestone(cursor, account): 
         customer_id = account['CustomerID']
 
         cursor.execute("""
@@ -252,17 +252,16 @@ class AccountManagement:
         else:
             pizzas_count = 0
 
-        # Calculate the milestone dynamically
-        milestone = ((pizzas_count // 10) + 1) * 10
-        pizzas_to_go = milestone - pizzas_count
-    
-        print(f"Pizza purchases: {pizzas_count}/{milestone}")
-    
-        if pizzas_to_go == 0:
-            print(f"Congratulations! You've reached {milestone} pizzas. Enjoy your discount!")
+        print(f"Pizza purchases: {pizzas_count}")
+
+        # Determine the current milestone
+        milestone = (pizzas_count // 10) * 10 + 10  # This will give us the next milestone (10, 20, 30, ...)
+
+        # Check if the customer has reached the milestone
+        if pizzas_count >= milestone - 10:  # Checking for the previous milestone (0, 10, 20...)
+            print(f"Congratulations! You've reached {milestone - 10} pizzas. Enjoy your discount!")
             return True
         else:
-            print(f"Only {pizzas_to_go} more pizzas to reach {milestone} pizzas for a discount!")
+            print(f"Only {milestone - 10 - pizzas_count} more pizzas to reach {milestone - 10} pizzas for a discount!")
             return False
-
 
