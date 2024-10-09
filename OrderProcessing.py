@@ -48,116 +48,117 @@ class OrderProcessing:
             print("Invalid or expired coupon.")
             return None
 
-    def print_order_summary(order_items, cursor, is_birthday, account, coupon_value):
-
+    def calculate_order_details(order_items, cursor, is_birthday, account, coupon_value):
         if not order_items:
-            print("No items in your order.")
-            return
+            return None, None, None, None  # Return None when no items in order
 
         # Initialize total price
         total_price = Decimal('0.0')
 
-        print("\n------------------ Order Summary ------------------")
-        print(f"{'Item Name':<20} {'Quantity':<10} {'Price':<10} {'Total':<10}")
-        print("-" * 60)
+        item_details = []  # Store details for each item to be printed later
 
         # Loop through each item in the order
         for item_id, quantity in order_items:
-            # Check if the item is a personalized pizza
-            if item_id[0] == 9:
-                # Extract ingredient IDs (flatten the list to just IDs)
-                ingredient_ids = [ingr_id for ingr_id, _ in item_id[1]]  # Unpack the ingredient ID from the tuple
+            if item_id[0] == 9:  # Personalized pizza
+                ingredient_ids = [ingr_id for ingr_id, _ in item_id[1]]
 
-                # Generate query with placeholders
+                # Generate query to fetch ingredients
                 placeholders = ', '.join(['%s'] * len(ingredient_ids))
                 query = f""" 
                     SELECT i.IngredientName, i.Price 
                     FROM Ingredient i 
                     WHERE i.IngredientID IN ({placeholders})
                 """
-                cursor.execute(query, ingredient_ids)  # Pass the list of ingredient IDs (unpacked correctly)
+                cursor.execute(query, ingredient_ids)
                 ingredients = cursor.fetchall()
 
-                # Extract names and prices of selected ingredients
                 ingredient_names = [ingredient[0] for ingredient in ingredients]
                 ingredient_total_price = sum(ingredient[1] for ingredient in ingredients)
 
-                # Apply 40% profit margin to the ingredient total price
+                # Apply 40% profit margin to ingredient total
                 price_with_profit = Decimal(ingredient_total_price) * Decimal('1.40')
-
-                # Calculate item total for the quantity ordered
                 item_total = price_with_profit * Decimal(quantity)
 
-                # Add to the total price
                 total_price += item_total
-
-                # Print each personalized pizza with the selected ingredients
-                pizza_description = "Personalized Pizza"
-                print(f"{pizza_description:<20} {quantity:<10} €{price_with_profit:.2f}  €{item_total:.2f}")
-
-                # Print ingredients on a new line, indented for better formatting
-                ingredients_line = ", ".join(ingredient_names)
-                print(f"{'Ingredients:':<20} {ingredients_line}")
-
-            else:
-                # Fetch item details from the Item table for non-personalized pizzas
+                item_details.append({
+                    'name': "Personalized Pizza",
+                    'quantity': quantity,
+                    'price': price_with_profit,
+                    'item_total': item_total,
+                    'ingredients': ingredient_names
+                })
+            else:  # Regular pizza
                 cursor.execute("SELECT ItemName FROM Item WHERE ItemID = %s", (item_id[0],))
                 item_name = cursor.fetchone()[0]
 
-                # Fetch the total price for the item (based on ingredients)
                 cursor.execute("""
                     SELECT SUM(i.Price) 
                     FROM IngredientList il 
                     JOIN Ingredient i ON il.IngredientID = i.IngredientID
                     WHERE il.ItemID = %s
                 """, (item_id[0],))
-                base_price = cursor.fetchone()[0] or Decimal('0.0')  # Handle missing prices
+                base_price = cursor.fetchone()[0] or Decimal('0.0')
 
-                # Apply 40% profit margin
                 price_with_profit = base_price * Decimal('1.40')
-
-                # Calculate item total for the quantity ordered
                 item_total = price_with_profit * Decimal(quantity)
 
-                # Add to the total price
                 total_price += item_total
+                item_details.append({
+                    'name': item_name,
+                    'quantity': quantity,
+                    'price': price_with_profit,
+                    'item_total': item_total
+                })
 
-                # Print each item in the order with quantity, individual price, and total price
-                print(f"{item_name:<20} {quantity:<10} €{price_with_profit:.2f}  €{item_total:.2f}")
-
-        # Handle birthday bonus items
+        # Birthday bonus
         if is_birthday:
-            print("\n--- Birthday Bonus ---")
-            for item_name in ['Margherita', 'Cola']:
-                print(f"{item_name:<20} {'1':<10} €0.00  €0.00")
+            item_details.append({'name': 'Margherita', 'quantity': 1, 'price': Decimal('0.00'), 'item_total': Decimal('0.00')})
+            item_details.append({'name': 'Cola', 'quantity': 1, 'price': Decimal('0.00'), 'item_total': Decimal('0.00')})
 
         # Check for milestone discount
         milestone = AccountManagement.check_pizza_milestone(cursor, account)
-        milestone_discount = Decimal('0.0')
-        if milestone:
-            milestone_discount = total_price * Decimal('0.10')
+        milestone_discount = total_price * Decimal('0.10') if milestone else Decimal('0.0')
 
-        # Calculate coupon discount (if applicable)
-        coupon_discount = Decimal('0.0')
-        if coupon_value != 0.0:
-            coupon_discount = Decimal(coupon_value) / Decimal('100.0') * total_price
+        # Calculate coupon discount
+        coupon_discount = (Decimal(coupon_value) / Decimal('100.0')) * total_price if coupon_value != 0.0 else Decimal('0.0')
 
-        # Calculate total discounts
+        # Total discounts
         total_discounts = milestone_discount + coupon_discount
         discounted_total = total_price - total_discounts
 
         # Apply 9% VAT
         vat = discounted_total * Decimal('0.09')
 
-        # Calculate final total price
+        # Final total price
         final_price = discounted_total + vat
 
-        # Print total price summary
+        return item_details, total_discounts, vat, final_price
+
+
+    def print_order_summary(order_items, cursor, is_birthday, account, coupon_value):
+        item_details, total_discounts, vat, final_price = OrderProcessing.calculate_order_details(order_items, cursor, is_birthday, account, coupon_value)
+
+        if not item_details:
+            print("No items in your order.")
+            return
+
+        print("\n------------------ Order Summary ------------------")
+        print(f"{'Item Name':<20} {'Quantity':<10} {'Price':<10} {'Total':<10}")
+        print("-" * 60)
+
+        # Print details of each item
+        for item in item_details:
+            print(f"{item['name']:<20} {item['quantity']:<10} €{item['price']:.2f}  €{item['item_total']:.2f}")
+            if 'ingredients' in item:
+                ingredients_line = ", ".join(item['ingredients'])
+                print(f"{'Ingredients:':<20} {ingredients_line}")
+
         print("-" * 60)
         print(f"{'Discounts:':<40} €{total_discounts:.2f}")
         print(f"{'VAT:':<40} €{vat:.2f}")
         print(f"{'Total Price:':<40} €{final_price:.2f}")
         print("---------------------------------------------------\n")
+
 
     def order_items(self, account):
         print("Place your order:")
@@ -281,7 +282,7 @@ class OrderProcessing:
         clear_screen()
 
         if choice == '1':
-            OrderProcessing.place_order(cursor, account, items_ordered)
+            OrderProcessing.place_order(cursor, account, items_ordered, is_birthday, coupon_discount)
             print("Placing order")
         elif choice == '2':
             print("Going back to menu...")
@@ -289,7 +290,7 @@ class OrderProcessing:
             print("Thank you for using Gusto d'Italia!")
             exit()
 
-    def place_order(cursor, account, items_ordered):
+    def place_order(cursor, account, items_ordered, is_birthday, coupon_discount):
         customer_id = account['CustomerID']
 
         cursor.execute("""
@@ -300,12 +301,16 @@ class OrderProcessing:
         """, (customer_id,))
 
         delivery_address = cursor.fetchone()  # Fetch one record
+
+        order_details =OrderProcessing.calculate_order_details(items_ordered, cursor, is_birthday, account, coupon_discount)
+        total_price = Decimal(order_details[3])
+        print(total_price)
     
         # Step 1: Insert the order into the Order table
         cursor.execute("""
-            INSERT INTO `Order` (CustomerID, DeliveryAddressID, OrderPlacementTime)
-            VALUES (%s, %s,NOW())
-        """, (customer_id, delivery_address))
+            INSERT INTO `Order` (CustomerID, DeliveryAddressID, OrderPlacementTime, TotalPrice)
+            VALUES (%s, %s,NOW(), %s)
+        """, (customer_id, delivery_address, total_price))
 
         cursor.connection.commit()
     
