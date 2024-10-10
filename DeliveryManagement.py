@@ -25,6 +25,7 @@ class DeliveryManagement:
         result = self.cursor.fetchone()
         
         if result:
+            order_status, start_time, estimated_delivery_time = result
             #calculate remaining time to cancel order in MM:SS format
             if start_time:
                 #calculate time elapsed since placing the order
@@ -43,8 +44,8 @@ class DeliveryManagement:
                 time_remaining_str = "05:00"
 
             return {
-                "OrderStatus": result[0],
-                "EstimatedDeliveryTime": result[2]
+                "OrderStatus": order_status,
+                "EstimatedDeliveryTime": estimated_delivery_time,
                 "RemainingTime": time_remaining_str
             }
         if not result:
@@ -77,7 +78,7 @@ class DeliveryManagement:
             return "Order cannot be canceled at this stage."
 
         # check if order is within the 5-minute cancellation window
-        if (datetime.datetime.now() - order_placement_time).total_seconds() < 300
+        if (datetime.datetime.now() - order_placement_time).total_seconds() < 300 :
             #update order status to 'Cancelled'
             self.cursor.execute("""
                 UPDATE `Order`
