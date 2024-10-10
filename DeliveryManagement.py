@@ -27,7 +27,7 @@ class DeliveryManagement:
         if result:
             order_status, start_time, estimated_delivery_time = result
             #calculate remaining time to cancel order in MM:SS format
-            if start_time:
+            if result[1]:
                 #calculate time elapsed since placing the order
                 time_elapsed = (datetime.datetime.now() - result[1]).total_seconds()
                 
@@ -78,7 +78,9 @@ class DeliveryManagement:
             return "Order cannot be canceled at this stage."
 
         # check if order is within the 5-minute cancellation window
+
         if (datetime.datetime.now() - order_placement_time).total_seconds() < 300 :
+
             #update order status to 'Cancelled'
             self.cursor.execute("""
                 UPDATE `Order`
@@ -132,8 +134,11 @@ class DeliveryManagement:
         
         if not order_details:
             return "Order not found or no pizzas in the order."
-
+        
         pizza_count, order_placement_time, area_id = order_details
+        
+        if pizza_count is None:
+            pizza_count = 0
 
         # 2. if the number of pizzas is 3 or more, assign the order to an available delivery person directly
         if pizza_count >= 3:
@@ -165,9 +170,9 @@ class DeliveryManagement:
                 self.cursor.execute("""
                     SELECT DeliveryPersonID
                     FROM OrderDelivery
-                    WHERE OrerID = %s
+                    WHERE OrderID = %s
                 """, (matched_order_id,))
-                delivery_person_id = self.self.cursor.fetchone()
+                delivery_person_id = self.cursor.fetchone()
                 if delivery_person_id:
                     # assign current order to the same delivery person
                     self.assign_order_to_delivery_person(order_id, delivery_person_id)
@@ -178,6 +183,8 @@ class DeliveryManagement:
         if delivery_person_id:
             self.assign_order_to_delivery_person(order_id, delivery_person_id)
             return f"Order {order_id} assigned to delivery person {delivery_person_id}."
+        
+        print("6")
         
         # 6. If no delivery person is available, generate an error message
         return "Sorry, currently no delivery person available in this area. Please wait."

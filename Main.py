@@ -1,47 +1,62 @@
-from OrderProcessing import OrderProcessing
-from AccountManagement import AccountManagement
-from DeliveryManagement import DeliveryManagement
-from Database import execute_query, fetch_results
-import mysql.connector
+from AccountManagement import AccountManagement  # Import the class for account management
+from OrderProcessing import OrderProcessing  # Import the class for order processing
+from DeliveryManagement import DeliveryManagement  # Import the class for delivery management
+from Database import connect  # Import the function to connect to the database
+from Menu import display_menu
 import datetime
+import os
 
-def display_menu():
-    print("Menu:")
-    items = fetch_results("SELECT ItemID, ItemName, Price FROM Item")  # Fetch items from the database
-    if items:
-        for item in items:
-            print(f"{item[0]}: {item[1]} - ${item[2]:.2f}")
+def clear_screen():
+    # Check the operating system and clear the screen accordingly
+    if os.name == 'nt': 
+        os.system('cls')
+    else:  
+        os.system('clear')
 
 def main():
-    print("Welcome to the Pizza Delivery System!")
-    
-    # Step 1: Account Management
-    account_manager = AccountManagement()
-    account = account_manager.login_or_create_account()
+    print("Welcome to Gusto d'Italia!")
+    db = connect()
+    cursor = db.cursor()
 
-    if account:
-        print(f"Welcome back, {account['Username']}!")
-        
-        # Step 2: Display Menu
-        display_menu()
-        
-        # Assuming you have logic to capture delivery address ID and items
-        delivery_address_id = 1  # Example ID, replace with actual logic
-        items = [(1, 2), (2, 1)]  # Example items: (ItemID, Quantity)
+    account_manager = AccountManagement(cursor)
+    order_processor = OrderProcessing(cursor)
+    account = None
+    while not account:
+        print("Do you want to (1) log in or (2) sign up?")
+        choice = input("Enter 1 for log in, 2 for sign up: ")
+        if choice == '1':
+            account = account_manager.login()
+        elif choice == '2':
+            account = account_manager.signup()
 
-        # Step 3: Place Order
-        order_processor = OrderProcessing()
-        order_details = order_processor.place_order(account['CustomerID'], delivery_address_id, items)
+    clear_screen()
+    print(f"Welcome, {account['FirstName']}!")
 
-        # Step 4: Manage Delivery
-        delivery_manager = DeliveryManagement()
-        estimated_delivery_time = delivery_manager.calculate_delivery_time(datetime.datetime.now(), 30)  # Example: 30 minutes delivery time
-        delivery_status = delivery_manager.track_delivery(order_details['OrderID'])
+    while True:
+        print("\nWhat would you like to do?")
+        print("1. View Menu")
+        print("2. Place an Order")
+        print("3. View Account")
+        print("4. Exit")
+        option = input("Enter your choice: ")
 
-        print(f"Your order status: {delivery_status}")
-        print(f"Estimated delivery time: {estimated_delivery_time}")
-    
-    print("Thank you for using the Pizza Delivery System!")
+        if option == '1':
+            clear_screen()
+            display_menu(cursor)
+        elif option == '2':
+            clear_screen()
+            order_processor.order_items(account)
+        elif option == '3':
+            AccountManagement.view_account(cursor, account) 
+            clear_screen()
+        elif option == '4':
+            print("Thank you for using Gusto d'Italia!")
+            break
+        else:
+            print("Invalid option. Please choose again.")
+
+    cursor.close()
+    db.close()
 
 if __name__ == "__main__":
     main()
