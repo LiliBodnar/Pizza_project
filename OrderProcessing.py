@@ -48,7 +48,7 @@ class OrderProcessing:
             print("Invalid or expired coupon.")
             return None
 
-    def calculate_order_details(order_items, cursor, is_birthday, account, coupon_value):
+    def calculate_order_details(order_items, cursor, is_birthday, account, coupon_value, milestone):
         if not order_items:
             return None, None, None, None  # Return None when no items in order
 
@@ -116,7 +116,6 @@ class OrderProcessing:
             item_details.append({'name': 'Cola', 'quantity': 1, 'price': Decimal('0.00'), 'item_total': Decimal('0.00')})
 
         # Check for milestone discount
-        milestone = AccountManagement.check_pizza_milestone(cursor, account)
         milestone_discount = total_price * Decimal('0.10') if milestone else Decimal('0.0')
 
         # Calculate coupon discount
@@ -135,8 +134,8 @@ class OrderProcessing:
         return item_details, total_discounts, vat, final_price
 
 
-    def print_order_summary(order_items, cursor, is_birthday, account, coupon_value):
-        item_details, total_discounts, vat, final_price = OrderProcessing.calculate_order_details(order_items, cursor, is_birthday, account, coupon_value)
+    def print_order_summary(order_items, cursor, is_birthday, account, coupon_value, milestone):
+        item_details, total_discounts, vat, final_price = OrderProcessing.calculate_order_details(order_items, cursor, is_birthday, account, coupon_value, milestone)
 
         if not item_details:
             print("No items in your order.")
@@ -231,7 +230,8 @@ class OrderProcessing:
             # Show itemized list and total
             is_birthday = self.check_birthday(account)
             coupon_discount = Decimal('0.0')
-            OrderProcessing.print_order_summary(items_ordered, self.cursor, is_birthday, account, coupon_discount)
+            milestone = AccountManagement.check_pizza_milestone(self.cursor, account)
+            OrderProcessing.print_order_summary(items_ordered, self.cursor, is_birthday, account, coupon_discount, milestone)
 
             # Ask for a coupon code before proceeding with the final confirmation
             coupon_code = input("Enter a coupon code if you have one, or press Enter to skip: ").strip()
@@ -256,14 +256,14 @@ class OrderProcessing:
             clear_screen()
 
             if choice == '1':
-                OrderProcessing.process_order(self.cursor, account, items_ordered, is_birthday, coupon_discount)
+                OrderProcessing.process_order(self.cursor, account, items_ordered, is_birthday, coupon_discount, milestone)
             elif choice == '2':
                 print("Order cancelled. Returning to the main menu.")
             elif choice == '3':
                 print("Thank you for using Gusto d'Italia!")
                 exit()
 
-    def process_order(cursor, account, items_ordered, is_birthday, coupon_discount):
+    def process_order(cursor, account, items_ordered, is_birthday, coupon_discount, milestone):
         # Check for address and confirm delivery
         account_manager = AccountManagement(cursor)
         delivery_address = account_manager.check_address(account)
@@ -271,7 +271,7 @@ class OrderProcessing:
         clear_screen()
 
         print("Confirm total and delivery address:")
-        OrderProcessing.print_order_summary(items_ordered, cursor, is_birthday, account, coupon_discount)
+        OrderProcessing.print_order_summary(items_ordered, cursor, is_birthday, account, coupon_discount, milestone)
         print(f"Delivering to: {delivery_address['StreetName']} {delivery_address['HouseNumber']} {delivery_address['PostalCode']}")
 
         print("\n1. Proceed with order")
@@ -282,7 +282,7 @@ class OrderProcessing:
         clear_screen()
 
         if choice == '1':
-            OrderProcessing.place_order(cursor, account, items_ordered, is_birthday, coupon_discount)
+            OrderProcessing.place_order(cursor, account, items_ordered, is_birthday, coupon_discount, milestone)
             print("Placing order")
         elif choice == '2':
             print("Going back to menu...")
@@ -290,7 +290,7 @@ class OrderProcessing:
             print("Thank you for using Gusto d'Italia!")
             exit()
 
-    def place_order(cursor, account, items_ordered, is_birthday, coupon_discount):
+    def place_order(cursor, account, items_ordered, is_birthday, coupon_discount, milestone):
         customer_id = account['CustomerID']
 
         cursor.execute("""
@@ -302,7 +302,7 @@ class OrderProcessing:
 
         delivery_address = cursor.fetchone()  # Fetch one record
 
-        order_details =OrderProcessing.calculate_order_details(items_ordered, cursor, is_birthday, account, coupon_discount)
+        order_details =OrderProcessing.calculate_order_details(items_ordered, cursor, is_birthday, account, coupon_discount, milestone)
         total_price = Decimal(order_details[3])
         print(total_price)
     
@@ -351,18 +351,31 @@ class OrderProcessing:
         """, (order_id,))
 
         number_of_pizzas = cursor.fetchone()
-        print(number_of_pizzas[0])
+
+        cursor.execute("""
+            SELECT MilestoneCount
+            FROM Customer
+            WHERE CustomerID = %s
+        """, (customer_id,))
+
+        milestone_count = cursor.fetchone()
+
+        if milestone_count[0] <= number_of_pizzas[0]:
+            new_milestone_count = 0
+        else:
+            new_milestone_count = milestone_count[0] - number_of_pizzas[0]
 
         cursor.execute("""
                 UPDATE Customer
-                SET NumberOfPizzas = NumberOfPizzas + %s
+                SET NumberOfPizzas = NumberOfPizzas + %s, MilestoneCount = %s
                 WHERE CustomerID = %s
-            """, (number_of_pizzas[0], customer_id))
+            """, (number_of_pizzas[0], new_milestone_count, customer_id))
         
         cursor.connection.commit()
 
         delivery_manager = DeliveryManagement(cursor)
 
+        clear_screen()
         print("Thank you for your order! You have 5 minutes to cancel your order.")
         
 

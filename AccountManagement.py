@@ -213,9 +213,6 @@ class AccountManagement:
             else:
                 print("No delivery address found.")
 
-            # Call the function to display pizza milestone
-            AccountManagement.check_pizza_milestone(cursor, account)
-
             # Offer options to update phone or address
             update_option = input("Would you like to update your phone number or delivery address? (phone/address/none): ").strip().lower()
         
@@ -240,6 +237,14 @@ class AccountManagement:
         customer_id = account['CustomerID']
 
         cursor.execute("""
+            SELECT c.MilestoneCount
+            FROM Customer c
+            WHERE c.CustomerID = %s
+        """, (customer_id,))
+
+        pizzas_missing = cursor.fetchone()
+
+        cursor.execute("""
             SELECT c.NumberOfPizzas
             FROM Customer c
             WHERE c.CustomerID = %s
@@ -252,16 +257,25 @@ class AccountManagement:
         else:
             pizzas_count = 0
 
+        if pizzas_missing and pizzas_missing[0] is not None:
+            pizzas_missing = int(pizzas_missing[0])
+        else:
+            pizzas_missing = 0
+
         print(f"Pizza purchases: {pizzas_count}")
 
-        # Determine the current milestone
-        milestone = (pizzas_count // 10) * 10 + 10  # This will give us the next milestone (10, 20, 30, ...)
-
         # Check if the customer has reached the milestone
-        if pizzas_count >= milestone - 10:  # Checking for the previous milestone (0, 10, 20...)
-            print(f"Congratulations! You've reached {milestone - 10} pizzas. Enjoy your discount!")
+        if pizzas_missing == 0:  # Checking for the previous milestone (0, 10, 20...)
+            print(f"Congratulations! You ordered 10 pizzas from us. Enjoy your 10% discount!")
+
+            cursor.execute("""
+                UPDATE Customer
+                SET MilestoneCount = 10
+                WHERE CustomerID = %s
+            """, (customer_id,))
+
             return True
         else:
-            print(f"Only {milestone - 10 - pizzas_count} more pizzas to reach {milestone - 10} pizzas for a discount!")
+            print(f"Only {pizzas_missing} more pizzas to get a discount!")
             return False
 
