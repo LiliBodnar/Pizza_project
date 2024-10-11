@@ -53,6 +53,9 @@ class EarningsReport:
 
         total_price, total_customers, num_orders, num_items = self.cursor.fetchone() or (0.0, 0, 0, 0)
 
+        if total_price is None:
+            total_price = Decimal(0.0)
+
         ingredient_cost = total_price / Decimal(1.49) 
 
         profit = ingredient_cost * Decimal(0.40)
