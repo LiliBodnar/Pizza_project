@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 import os
 import matplotlib.gridspec as gridspec
 from decimal import Decimal
@@ -52,6 +53,18 @@ class EarningsReport:
         """, (month, year, gender, gender, min_age, max_age))
 
         total_price, total_customers, num_orders, num_items = self.cursor.fetchone() or (0.0, 0, 0, 0)
+
+        if total_customers is None:
+            total_customers = 0
+
+        if num_orders is None:
+            num_orders = 0
+
+        if num_items is None:
+            num_items = 0
+
+        if total_price is None:
+            total_price = Decimal(0.0)
 
         ingredient_cost = total_price / Decimal(1.49) 
 
@@ -306,96 +319,148 @@ class EarningsReport:
         print("========================")
 
     def plot_earnings_report(self, report):
-
+        
         profit, total_earnings, total_customers, num_orders, num_items, num_pizzas, area_distribution, pizza_distribution = report
-
-        num_non_pizza = num_items - num_pizzas
+    
+        # Handle NaN or None values with default values
+        total_earnings = np.nan_to_num(total_earnings, nan=0)
+        profit = np.nan_to_num(profit, nan=0)
+        total_customers = np.nan_to_num(total_customers, nan=0)
+        num_orders = np.nan_to_num(num_orders, nan=0)
+        num_items = np.nan_to_num(num_items, nan=0)
+        num_pizzas = np.nan_to_num(num_pizzas, nan=0)
+        
+        if num_items == 0 and num_pizzas == 0:
+            num_non_pizza = 0
+        else:
+            num_non_pizza = num_items - num_pizzas
 
         labels_items = ['Pizzas', 'Other Items']
         sizes_items = [num_pizzas, num_non_pizza]
 
-        area_ids = [f"Area {row[0]}" for row in area_distribution] 
-        area_counts = [row[1] for row in area_distribution]
+        area_ids = [f"Area {row[0]}" for row in (area_distribution or [])]
+        area_counts = np.nan_to_num([row[1] for row in (area_distribution or [])], nan=0)
 
-        pizza_labels = [row[0] for row in pizza_distribution]  
-        pizza_sizes = [row[1] for row in pizza_distribution]  
+        pizza_labels = [row[0] for row in (pizza_distribution or [])]
+        pizza_sizes = np.nan_to_num([row[1] for row in (pizza_distribution or [])], nan=0)
 
         plt.figure(figsize=(12, 10))
 
+        # Plot pizzas vs. other items
         plt.subplot(2, 2, 1)
-        plt.pie(sizes_items, labels=labels_items, autopct='%1.1f%%', startangle=140)
+        if np.sum(sizes_items) > 0:
+            plt.pie(sizes_items, labels=labels_items, autopct='%1.1f%%', startangle=140)
+        else:
+            plt.text(0.5, 0.5, 'No data', horizontalalignment='center', verticalalignment='center', fontsize=12)
         plt.axis('equal')
         plt.title('Pizzas vs. Other Items Ordered')
 
+        # Plot area distribution
         plt.subplot(2, 2, 2)
-        plt.pie(area_counts, labels=area_ids, autopct='%1.1f%%', startangle=140)
+        if np.sum(area_counts) > 0:
+            plt.pie(area_counts, labels=area_ids, autopct='%1.1f%%', startangle=140)
+        else:
+            plt.text(0.5, 0.5, 'No data', horizontalalignment='center', verticalalignment='center', fontsize=12)
         plt.axis('equal')
         plt.title('Customer Distribution by Area')
 
-        plt.subplot(2, 2, 3)  
-        plt.pie(pizza_sizes, labels=pizza_labels, autopct='%1.1f%%', startangle=140)
+        # Plot pizza types distribution
+        plt.subplot(2, 2, 3)
+        if np.sum(pizza_sizes) > 0:
+            plt.pie(pizza_sizes, labels=pizza_labels, autopct='%1.1f%%', startangle=140)
+        else:
+            plt.text(0.5, 0.5, 'No data', horizontalalignment='center', verticalalignment='center', fontsize=12)
         plt.axis('equal')
         plt.title('Distribution of Pizza Types Ordered')
 
         plt.tight_layout()
-
         plt.show()
 
     def plot_yearly_earnings(self, report):
 
         months, profits, num_orders, total_male_customers, total_female_customers, area_distribution, revenues, age_distribution, pizza_distribution = report
+        
+        # Handle NaN or None values with default values
+        total_male_customers = np.nan_to_num(total_male_customers, nan=0)
+        total_female_customers = np.nan_to_num(total_female_customers, nan=0)
+        profits = np.nan_to_num([p for p in profits], nan=0)
+        num_orders = np.nan_to_num([n for n in num_orders], nan=0)
+        revenues = np.nan_to_num([r for r in revenues], nan=0)
 
-        labels_customers = ['Male Customers', 'Female Customers']
-        sizes_customers = [total_male_customers, total_female_customers]
+        area_ids = [f"Area {row[0]}" for row in (area_distribution or [])]
+        area_counts = np.nan_to_num([row[1] for row in (area_distribution or [])], nan=0)
 
-        area_ids = [f"Area {row[0]}" for row in area_distribution]
-        area_counts = [row[1] for row in area_distribution]
+        age_groups = [row[0] for row in (age_distribution or [])]
+        age_counts = np.nan_to_num([row[1] for row in (age_distribution or [])], nan=0)
 
-        age_groups = [row[0] for row in age_distribution]
-        age_counts = [row[1] for row in age_distribution]
+        pizza_labels = [row[0] for row in (pizza_distribution or [])]
+        pizza_sizes = np.nan_to_num([row[1] for row in (pizza_distribution or [])], nan=0)
 
-        pizza_labels = [row[0] for row in pizza_distribution]
-        pizza_sizes = [row[1] for row in pizza_distribution]
+        # Set up figure with gridspec for customized layout
+        plt.figure(figsize=(14, 10))
+        gs = gridspec.GridSpec(3, 2, height_ratios=[1, 1, 1.2])
 
-        plt.figure(figsize=(20, 14))
-        gs = gridspec.GridSpec(3, 2, height_ratios=[1, 1, 1.5])
-
+        # Bar chart for monthly profit
         plt.subplot(gs[0, 0])
-        plt.bar(months, profits, color='green')
+        if np.sum(profits) > 0:
+            plt.bar(months, profits, color='green')
+        else:
+            plt.text(0.5, 0.5, 'No data', horizontalalignment='center', verticalalignment='center', fontsize=12)
         plt.xlabel('Month')
         plt.ylabel('Profit (€)')
         plt.title('Profit per Month')
         plt.xticks(months)
 
+        # Bar chart for number of orders per month
         plt.subplot(gs[0, 1])
-        plt.bar(months, num_orders, color='blue')
+        if np.sum(num_orders) > 0:
+            plt.bar(months, num_orders, color='blue')
+        else:
+            plt.text(0.5, 0.5, 'No data', horizontalalignment='center', verticalalignment='center', fontsize=12)
         plt.xlabel('Month')
         plt.ylabel('Number of Orders')
         plt.title('Number of Orders per Month')
         plt.xticks(months)
 
+        # Pie chart for gender distribution
         plt.subplot(gs[1, 0])
-        plt.pie(sizes_customers, labels=labels_customers, autopct='%1.1f%%', startangle=140)
+        sizes_customers = [total_male_customers, total_female_customers]
+        if np.sum(sizes_customers) > 0:
+            plt.pie(sizes_customers, labels=['Male Customers', 'Female Customers'], autopct='%1.1f%%', startangle=140)
+        else:
+            plt.text(0.5, 0.5, 'No data', horizontalalignment='center', verticalalignment='center', fontsize=12)
         plt.axis('equal')
         plt.title('Customer Gender Distribution')
 
+        # Pie chart for area distribution
         plt.subplot(gs[1, 1])
-        plt.pie(area_counts, labels=area_ids, autopct='%1.1f%%', startangle=140)
+        if np.sum(area_counts) > 0:
+            plt.pie(area_counts, labels=area_ids, autopct='%1.1f%%', startangle=140)
+        else:
+            plt.text(0.5, 0.5, 'No data', horizontalalignment='center', verticalalignment='center', fontsize=12)
         plt.axis('equal')
         plt.title('Customer Distribution by Area')
 
+        # Bar chart for age distribution
         plt.subplot(gs[2, 0])
-        plt.pie(age_counts, labels=age_groups, autopct='%1.1f%%', startangle=140)
-        plt.axis('equal')
+        if np.sum(age_counts) > 0:
+            plt.bar(age_groups, age_counts)
+        else:
+            plt.text(0.5, 0.5, 'No data', horizontalalignment='center', verticalalignment='center', fontsize=12)
         plt.title('Customer Age Distribution')
+        plt.xlabel('Age Group')
+        plt.ylabel('Number of Customers')
 
-        plt.subplot(gs[2,1]) 
-        plt.pie(pizza_sizes, labels=pizza_labels, autopct='%1.1f%%', startangle=140)
+        # Pie chart for pizza distribution
+        plt.subplot(gs[2, 1])
+        if np.sum(pizza_sizes) > 0:
+            plt.pie(pizza_sizes, labels=pizza_labels, autopct='%1.1f%%', startangle=140)
+        else:
+            plt.text(0.5, 0.5, 'No data', horizontalalignment='center', verticalalignment='center', fontsize=12)
         plt.axis('equal')
-        plt.title('Distribution of Pizza Types Ordered')
+        plt.title('Pizza Distribution')
 
-        plt.subplots_adjust(wspace=0.3, hspace=0.4)
-
+        plt.tight_layout()
         plt.show()
 
 

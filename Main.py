@@ -1,6 +1,8 @@
 from AccountManagement import AccountManagement  # Import the class for account management
 from OrderProcessing import OrderProcessing  # Import the class for order processing
 from DeliveryManagement import DeliveryManagement  # Import the class for delivery management
+from RestaurantMonitoring import RestaurantMonitoring # Import the class for restaurant monitoring
+from EarningsReport import EarningsReport # Import the class for earnings report
 from Database import connect  # Import the function to connect to the database
 from Menu import display_menu
 from RestaurantMonitoring import RestaurantMonitoring # Import the class for restaurant monitoring
@@ -26,21 +28,21 @@ def main():
     delivery_manager = DeliveryManagement(cursor)
 
     # Check if it's an employee or a customer account
-    if input("admin"):
-        employee_workflow(cursor, earnings_report)
-    else:
-        account = None
-        while not account:
-            print("Do you want to (1) log in or (2) sign up?")
-            choice = input("Enter 1 for log in, 2 for sign up: ")
-            if choice == '1':
-                account = account_manager.login()
-            elif choice == '2':
-                account = account_manager.signup()
+    #if input("admin"):
+       # employee_workflow(cursor, earnings_report)
+    #else:
+    account = None
+    while not account:
+        print("Do you want to (1) log in or (2) sign up?")
+        choice = input("Enter 1 for log in, 2 for sign up: ")
+        if choice == '1':
+            account = account_manager.login()
+        elif choice == '2':
+            account = account_manager.signup()
 
-        clear_screen()
-        print(f"Welcome, {account['FirstName']}!")
-        customer_workflow(cursor, account, order_processor, delivery_manager)
+    clear_screen()
+    print(f"Welcome, {account['FirstName']}!")
+    customer_workflow(cursor, account, order_processor, delivery_manager)
     cursor.close()
     db.close()
 
@@ -62,12 +64,12 @@ def customer_workflow(cursor, account, order_processor, delivery_manager):
         elif option == '2':
             clear_screen()
             order_processor.order_items(account)
-            delivery_manager.assign_and_group_orders(cursor, account['CustomerID'])
+            delivery_manager.assign_and_group_orders(account['CustomerID'])
         elif option == '3':
             delivery_manager.cancel_order(cursor)
-            clear_screen()
+            
         elif option == '4':
-            delivery_manager.get_order_status(cursor, account['CustomerID'])
+            delivery_manager.get_order_status(account['CustomerID'])
             break
         elif option == '5':
             AccountManagement.view_account(cursor, account) 

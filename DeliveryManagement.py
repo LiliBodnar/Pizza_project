@@ -80,7 +80,6 @@ class DeliveryManagement:
         # check if order is within the 5-minute cancellation window
 
         if (datetime.datetime.now() - order_placement_time).total_seconds() < 300 :
-
             #update order status to 'Cancelled'
             self.cursor.execute("""
                 UPDATE `Order`
