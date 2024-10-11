@@ -8,7 +8,7 @@ class DeliveryManagement:
         self.scheduler.add_job(self.update_delivery_status, 'interval', minutes=1)
         self.scheduler.start()  # Start the scheduler
 
-    def get_order_status(self):
+    def get_order_status(self, order_id):
         """
         Retrieve the current status of the order, its estimated delivery time and the window for order cancellation.
         
