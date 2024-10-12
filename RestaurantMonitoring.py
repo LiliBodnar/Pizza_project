@@ -1,5 +1,6 @@
 import time
 import os
+from Database import connect
 
 class RestaurantMonitoring:
     def __init__(self, cursor):
@@ -37,7 +38,7 @@ class RestaurantMonitoring:
                 pending_orders = self.get_pending_pizza_orders()
 
                 # display the header
-                print(f"{'Order ID':<10} {'Pizza name':<=40} {'Quantity':<100}")
+                print(f"{'Order ID':<10} {'Pizza name':<40} {'Quantity':<100}")
                 print("-" * 70)
 
                 # display orders
@@ -46,11 +47,20 @@ class RestaurantMonitoring:
                 else:
                     for order in pending_orders:
                         order_id, pizza_name, quantity = order
-                        print(f"{order_id:<10} {pizza_name:<=40} {quantity:<100}")
+                        print(f"{order_id:<10} {pizza_name:<40} {quantity:<100}")
 
                 # wait until the next refresh
                 time.sleep(refresh_interval)
 
         except KeyboardInterrupt:
             print("\nMonitoring stopped.")
-            
+
+def main():
+    db = connect()
+    cursor = db.cursor()
+
+    restaurant_monitoring = RestaurantMonitoring(cursor)
+    restaurant_monitoring.display_pending_pizza_orders()
+
+if __name__ == "__main__":
+    main()
