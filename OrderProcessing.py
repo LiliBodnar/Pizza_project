@@ -285,8 +285,8 @@ class OrderProcessing:
         clear_screen()
 
         if choice == '1':
-            OrderProcessing.place_order(cursor, account, items_ordered, is_birthday, coupon_discount, milestone)
             print("Placing order")
+            OrderProcessing.place_order(cursor, account, items_ordered, is_birthday, coupon_discount, milestone)
         elif choice == '2':
             print("Going back to menu...")
         elif choice == '3':
@@ -307,7 +307,6 @@ class OrderProcessing:
 
         order_details =OrderProcessing.calculate_order_details(items_ordered, cursor, is_birthday, account, coupon_discount, milestone)
         total_price = Decimal(order_details[3])
-        print(total_price)
     
         # Step 1: Insert the order into the Order table
         cursor.execute("""
@@ -376,56 +375,53 @@ class OrderProcessing:
         
         cursor.connection.commit()
 
-        # Step 3: Manage the order preparation and delivery
+        print(f"Your order {order_id} has been placed successfully!")
 
+        # Manage the order preparation and delivery
         delivery_manager = DeliveryManagement(cursor)
-        # Simulate the 10-minute preparation time, order is 'Being prepared'
-        time.sleep(10 * 60)
 
-        # Assign the delivery after preparation
-        delivery_manager.assign_delivery(order_id)
+        # Start the preparation thread
+        preparation_time_thread = threading.Thread(target=OrderProcessing.start_preparation, args=(order_id, delivery_manager))
+        preparation_time_thread.start()
 
-        #Start a timer for cancellation
-        cancel_timer_thread = threading.Thread(target=self.start_cancel_timer, args=(order_id,))
+        # Start the cancel timer thread
+        cancel_timer_thread = threading.Thread(target=OrderProcessing.start_cancel_timer, args=(order_id,))
         cancel_timer_thread.start()
 
-        print(f"Your order {order_id} has been placed successfully!")
-        clear_screen()
         print("Thank you for your order! You have 5 minutes to cancel your order.")
+        print('Order Status: In processing')
+        print('Estimated processing time: 5 minutes')
         
-        print("\n1. View order details")
-        print("2. Cancel order")
-        print("3. Exit")
+        print("\n1. Cancel order")
+        print("2. Exit")
         choice = input("Enter your choice: ")
-
-        clear_screen()
 
         if choice == '1':
-            delivery_manager.get_order_status(order_id)
-        elif choice == '2':
             delivery_manager.cancel_order(order_id)
-        elif choice == '3':
+            clear_screen()
+            print('Your order has been cancelled successfully!')
+        elif choice == '2':
             print("Thank you for using Gusto d'Italia!")
             exit()
-
-        print("2. Cancel order")
-        print("3. Exit")
-        choice = input("Enter your choice: ")
-        
-        if choice == '2':
-            print("Going back to menu...")
-        elif choice == '3':
-            print("Thank you for using Gusto d'Italia!")
-            exit()
-
-        return
     
-    def start_cancel_timer(self, order_id):
-        """
-        Start a timer for order cancellation. The cancellation time is 5 minutes after placing an order.
-        """
-        time.sleep(5 * 60)  # Simulate a 5-minute cancellation window
+    def start_cancel_timer(order_id):
+        """Start a timer for order cancellation."""
+        time.sleep(1 * 20)  # Simulate a 5-minute cancellation window
         
-        # After 5 minutes, the order can no longer be canceled
+        clear_screen()
         print("Order cancellation window is now closed.")
+        print("Order nº ", order_id)
+        print('Order Status: Being prepared')
+        print('Estimated preparation time: 15 minutes')
+        print('Enter 2 to exit:')
+
+
+    def start_preparation(order_id, delivery_manager):
+        """Start a timer for order preparation."""
+        time.sleep(2 * 20)  # Simulate a 10-minute preparation window
+        clear_screen()
+        delivery_manager.assign_and_group_orders(order_id)
+        DeliveryManagement.get_order_status(delivery_manager, order_id)
+        print('Enter 2 to exit:')
+
 

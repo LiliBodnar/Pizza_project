@@ -2,6 +2,14 @@ import threading
 import time
 #from apscheduler.schedulers.background import BackgroundScheduler
 import datetime
+import os
+
+def clear_screen():
+    # Check the operating system and clear the screen accordingly
+    if os.name == 'nt':  # 'nt' is for Windows
+        os.system('cls')
+    else:  # For macOS and Linux
+        os.system('clear')
 
 class DeliveryManagement:
     def __init__(self, cursor):
@@ -47,7 +55,7 @@ class DeliveryManagement:
                 time_remaining_str = "05:00"
         print(f"Order Status: {order_status}")
         print(f"Estimated Delivery Time: {estimated_delivery_time}")
-        print(f"Remaining Time to Cancel: {time_remaining_str}")
+        #print(f"Remaining Time to Cancel: {time_remaining_str}")
 
         if not result:
             print(f"We couldn't find your order: {order_id}")
@@ -93,10 +101,10 @@ class DeliveryManagement:
         #retrieve number of pizzas from the cancelled order
         self.cursor.execute("""
                 SELECT SUM(oi.Quantity), o.CustomerID
-                FROM 'Order'
+                FROM `Order` o
                 JOIN OrderItem oi ON o.OrderID = oi.OrderID
                 JOIN Customer c ON o.CustomerID = c.CustomerID
-                WHERE OrderID = %s AND ItemID IN (SELECT ItemID FROM Item WHERE ItemType = 'Pizza')
+                WHERE o.OrderID = %s AND ItemID IN (SELECT ItemID FROM Item WHERE ItemType = 'Pizza')
             """, (order_id,))
 
         number_of_pizzas, customer_id = self.cursor.fetchone()
@@ -110,8 +118,9 @@ class DeliveryManagement:
 
         # commit transaction
         self.cursor.connection.commit()
-
-        return "Order has been successfully canceled."
+        
+        print("Order has been successfully canceled.")
+        return
 
     def assign_and_group_orders(self, order_id):
         """
@@ -137,16 +146,16 @@ class DeliveryManagement:
             pizza_count = 0 
 
         if not order_details:
-            return "Order not found."
+             print("Order not found.")
        
         # 2. if the number of pizzas is 3 or more, assign the order to an available delivery person directly
         if pizza_count >= 3:
             delivery_person_id = self.find_available_delivery_person(area_id)
             if delivery_person_id:
                 self.assign_order_to_delivery_person(order_id, delivery_person_id)
-                return f"Order {order_id} was assigned to delivery person {delivery_person_id}."
+                print(f"Order {order_id} was assigned to delivery person {delivery_person_id}.")
             else:
-                return "Sorry, currently no delivery person is available in this area."
+                print("Sorry, currently no delivery person is available in this area.")
 
         # 3. check for other orders in the same area placed within 3-minutes
         self.cursor.execute("""
@@ -175,16 +184,15 @@ class DeliveryManagement:
                 if delivery_person_id:
                     # assign current order to the same delivery person
                     self.assign_order_to_delivery_person(order_id, delivery_person_id)
-                    return (f"Order {order_id} was assigned to delivery person {delivery_person_id} together with order {matched_order_id}")
+                    print(f"Order {order_id} was assigned to delivery person {delivery_person_id} together with order {matched_order_id}")
  #TODO DELETE "together with order {matched_order_id}" FROM RETURN MESSAGE AFTER TESTING
 
         # 5. no compatible grouping found, assign the current order to an available delivery person
         delivery_person_id = self.find_available_delivery_person(area_id)
         if delivery_person_id:
             self.assign_order_to_delivery_person(order_id, delivery_person_id)
-            return f"Order {order_id} assigned to delivery person {delivery_person_id}."
+            print(f"Order {order_id} assigned to delivery person {delivery_person_id}.")
         
-        print("6")
         
         # 6. if no delivery person is available, generate an error message
         return "Sorry, currently no delivery person available in this area. Please wait."
@@ -224,7 +232,7 @@ class DeliveryManagement:
 
         # change order status to 'On the way'
         self.cursor.execute("""
-            UPDATE 'Order'
+            UPDATE `Order`
             SET OrderStatus = 'On the way'
             WHERE OrderID = %s
         """, (order_id,))
@@ -233,6 +241,7 @@ class DeliveryManagement:
         self.cursor.execute("""
             UPDATE DeliveryPerson
             SET Availability = 'Not available'
+            WHERE DeliveryPersonID = %s
         """, (delivery_person_id,))
 
         # commit transaction
@@ -246,7 +255,8 @@ class DeliveryManagement:
         """
         Automatically updates deliveries status after the delivery time has passed.
         """
-        time.sleep(30 * 60)  # 30-minute delivery time
+        time.sleep(1 * 20)  # 30-minute delivery time
+        clear_screen()
       
         # update order status to 'Delivered'
         self.cursor.execute("""
@@ -266,12 +276,14 @@ class DeliveryManagement:
                 JOIN `Order` o ON o.OrderID = od.OrderID
                 WHERE od.DeliveryPersonID = %s
                 AND o.OrderStatus = 'On the way'
-                AND o.OrderID != %s                           
+                AND o.OrderID != %s
+            )                           
         """, (delivery_person_id, delivery_person_id, order_id))
 
         # commit transaction
         self.cursor.connection.commit()
         print(f"Order {order_id} has been delivered.")
+        print('Enter 2 to exit: ')
 
 
 
