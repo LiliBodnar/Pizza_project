@@ -104,7 +104,7 @@ class EarningsReport:
             JOIN 
                 DeliveryAddress da ON cda.DeliveryAddressID = da.DeliveryAddressID
             JOIN 
-                Area a ON da.PostalCode = a.PostalCode
+                AreaPostalCode a ON da.PostalCode = a.PostalCode
             WHERE 
                 MONTH(o.OrderPlacementTime) = %s
                 AND YEAR(o.OrderPlacementTime) = %s
@@ -226,7 +226,7 @@ class EarningsReport:
             JOIN 
                 DeliveryAddress da ON cda.DeliveryAddressID = da.DeliveryAddressID
             JOIN 
-                Area a ON da.PostalCode = a.PostalCode
+                AreaPostalCode a ON da.PostalCode = a.PostalCode
             WHERE 
                 YEAR(o.OrderPlacementTime) = %s
             GROUP BY 

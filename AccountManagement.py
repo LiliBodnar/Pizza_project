@@ -145,13 +145,13 @@ class AccountManagement:
         postal_code = input("Postal Code: ").strip()
 
         self.cursor.execute("""
-            SELECT AreaID FROM Area WHERE PostalCode = %s
+            SELECT AreaID FROM AreaPostalCode WHERE PostalCode = %s
         """, (postal_code,))
         area = self.cursor.fetchone()
 
         if not area:
             self.cursor.execute("""
-                INSERT INTO Area (PostalCode) VALUES (%s)
+                INSERT INTO AreaPostalCode (PostalCode) VALUES (%s)
             """, (postal_code,))
             area_id = self.cursor.lastrowid
         else:
@@ -176,7 +176,6 @@ class AccountManagement:
             "HouseNumber": house_number,
             "PostalCode": postal_code
         }
-
 
     def view_account(cursor, account):
         customer_id = account['CustomerID']

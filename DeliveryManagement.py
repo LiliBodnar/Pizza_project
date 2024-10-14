@@ -1,12 +1,14 @@
-from apscheduler.schedulers.background import BackgroundScheduler
+import threading
+import time
+#from apscheduler.schedulers.background import BackgroundScheduler
 import datetime
 
 class DeliveryManagement:
     def __init__(self, cursor):
         self.cursor = cursor  # Save the cursor for database operations
-        self.scheduler = BackgroundScheduler()
-        self.scheduler.add_job(self.update_delivery_status, 'interval', minutes=1)
-        self.scheduler.start()  # Start the scheduler
+        #self.scheduler = BackgroundScheduler()
+        #self.scheduler.add_job(self.update_delivery_status, 'interval', minutes=1)
+        #self.scheduler.start()  # Start the scheduler
 
     def get_order_status(self, order_id):
         """
@@ -27,9 +29,10 @@ class DeliveryManagement:
         if result:
             order_status, start_time, estimated_delivery_time = result
             #calculate remaining time to cancel order in MM:SS format
-            if result[1]:
+            order_status, start_time, estimated_delivery_time = result
+            if start_time:
                 #calculate time elapsed since placing the order
-                time_elapsed = (datetime.datetime.now() - result[1]).total_seconds()
+                time_elapsed = (datetime.datetime.now() - start_time).total_seconds()
                 
                 # calculate remaining time to cancel in seconds
                 time_remaining_seconds = max(0, 300 - time_elapsed) 
@@ -42,12 +45,10 @@ class DeliveryManagement:
             else:
                 # if no `OrderPlacementTime` is found we can assume that 5 minutes is remaining
                 time_remaining_str = "05:00"
+        print(f"Order Status: {order_status}")
+        print(f"Estimated Delivery Time: {estimated_delivery_time}")
+        print(f"Remaining Time to Cancel: {time_remaining_str}")
 
-            return {
-                "OrderStatus": order_status,
-                "EstimatedDeliveryTime": estimated_delivery_time,
-                "RemainingTime": time_remaining_str
-            }
         if not result:
             print(f"We couldn't find your order: {order_id}")
         return None
@@ -125,26 +126,25 @@ class DeliveryManagement:
             FROM `Order` o
             JOIN OrderItem oi ON o.OrderID = oi.OrderID
             JOIN DeliveryAddress da ON o.DeliveryAddressID = da.DeliveryAddressID
-            JOIN Area a ON da.PostalCode = a.PostalCode
+            JOIN AreaPostalCode a ON da.PostalCode = a.PostalCode
             WHERE o.OrderID = %s AND oi.ItemID IN (SELECT ItemID FROM Item WHERE ItemType = 'Pizza')
         """, (order_id,))
         
         order_details = self.cursor.fetchone()
         
-        if not order_details:
-            return "Order not found or no pizzas in the order."
-        
         pizza_count, order_placement_time, area_id = order_details
-        
         if pizza_count is None:
-            pizza_count = 0
+            pizza_count = 0 
 
+        if not order_details:
+            return "Order not found."
+       
         # 2. if the number of pizzas is 3 or more, assign the order to an available delivery person directly
         if pizza_count >= 3:
             delivery_person_id = self.find_available_delivery_person(area_id)
             if delivery_person_id:
                 self.assign_order_to_delivery_person(order_id, delivery_person_id)
-                return f"Order {order_id} assigned to delivery person {delivery_person_id}."
+                return f"Order {order_id} was assigned to delivery person {delivery_person_id}."
             else:
                 return "Sorry, currently no delivery person is available in this area."
 
@@ -155,7 +155,7 @@ class DeliveryManagement:
             JOIN OrderItem oi ON o.OrderID = oi.OrderID
             JOIN DeliveryAddress da ON o.DeliveryAddressID = da.DeliveryAddressID
             WHERE o.OrderStatus = 'On the way' 
-              AND da.PostalCode IN (SELECT PostalCode FROM Area WHERE AreaID = %s) 
+              AND da.PostalCode IN (SELECT PostalCode FROM AreaPostalCode WHERE AreaID = %s) 
               AND ABS(TIMESTAMPDIFF(MINUTE, o.OrderPlacementTime, %s)) <= 3
               AND oi.ItemID IN (SELECT ItemID FROM Item WHERE ItemType = 'Pizza')
             GROUP BY o.OrderID
@@ -176,8 +176,9 @@ class DeliveryManagement:
                     # assign current order to the same delivery person
                     self.assign_order_to_delivery_person(order_id, delivery_person_id)
                     return (f"Order {order_id} was assigned to delivery person {delivery_person_id} together with order {matched_order_id}")
-        
-        # 5. No compatible grouping found, assign the current order to an available delivery person
+ #TODO DELETE "together with order {matched_order_id}" FROM RETURN MESSAGE AFTER TESTING
+
+        # 5. no compatible grouping found, assign the current order to an available delivery person
         delivery_person_id = self.find_available_delivery_person(area_id)
         if delivery_person_id:
             self.assign_order_to_delivery_person(order_id, delivery_person_id)
@@ -185,7 +186,7 @@ class DeliveryManagement:
         
         print("6")
         
-        # 6. If no delivery person is available, generate an error message
+        # 6. if no delivery person is available, generate an error message
         return "Sorry, currently no delivery person available in this area. Please wait."
 
     def find_available_delivery_person(self, area_id):
@@ -221,13 +222,6 @@ class DeliveryManagement:
             VALUES (%s, %s, %s, %s)
         """, (order_id, delivery_person_id, datetime.datetime.now(), datetime.datetime.now() + datetime.timedelta(minutes=30)))
 
-        # change the delivery person's availability to 'Not available'
-        self.cursor.execute("""
-            UPDATE DeliveryPerson
-            SET Availability = 'Not available'
-            WHERE DeliveryPersonID = %s
-        """, (delivery_person_id,))
-
         # change order status to 'On the way'
         self.cursor.execute("""
             UPDATE 'Order'
@@ -235,47 +229,50 @@ class DeliveryManagement:
             WHERE OrderID = %s
         """, (order_id,))
 
-        # commit transaction
-        self.cursor.connection.commit()
-
-    def update_delivery_status(self):
-        """
-        Automatically updates deliveries every 2 minutes and modifies (if needed) the delivery status and delivery person's availability based on the time elapsed.
-        """
-        # find deliveries that started over 30 minutes ago
+         # change the delivery person's availability to 'Not available'
         self.cursor.execute("""
-            SELECT OrderID, DeliveryPersonID 
-            FROM OrderDelivery
-            WHERE EstimatedDeliveryTime <= %s AND OrderID IN (
-                SELECT OrderID FROM `Order` WHERE OrderStatus = 'On the way'
-            )
-        """, (datetime.datetime.now(),))
-
-        delivered_orders = self.cursor.fetchall()
-
-        for order_id, delivery_person_id in delivered_orders:
-            # update order status to 'Delivered'
-            self.cursor.execute("""
-                UPDATE `Order`
-                SET OrderStatus = 'Delivered'
-                WHERE OrderID = %s
-            """, (order_id,))
-
-            # change delivery person's availability back to 'Available'
-            self.cursor.execute("""
-                UPDATE DeliveryPerson
-                SET Availability = 'Available'
-                WHERE DeliveryPersonID = %s
-            """, (delivery_person_id,))
+            UPDATE DeliveryPerson
+            SET Availability = 'Not available'
+        """, (delivery_person_id,))
 
         # commit transaction
         self.cursor.connection.commit()
 
-    def __del__(self):
+        # Start a thread to automatically update the order to 'Delivered'
+        delivery_thread = threading.Thread(target=self.update_delivery_status, args=(order_id, delivery_person_id))
+        delivery_thread.start()
+
+    def update_delivery_status(self, order_id, delivery_person_id):
         """
-        Clean up the scheduler when the instance is destroyed.
+        Automatically updates deliveries status after the delivery time has passed.
         """
-        self.scheduler.shutdown()
+        time.sleep(30 * 60)  # 30-minute delivery time
+      
+        # update order status to 'Delivered'
+        self.cursor.execute("""
+            UPDATE `Order`
+            SET OrderStatus = 'Delivered'
+            WHERE OrderID = %s
+        """, (order_id,))
+
+        # change delivery person's availability back to 'Available'
+        self.cursor.execute("""
+            UPDATE DeliveryPerson
+            SET Availability = 'Available'
+            WHERE DeliveryPersonID = %s
+            AND NOT EXISTS (
+                SELECT 1 
+                FROM OrderDelivery od
+                JOIN `Order` o ON o.OrderID = od.OrderID
+                WHERE od.DeliveryPersonID = %s
+                AND o.OrderStatus = 'On the way'
+                AND o.OrderID != %s                           
+        """, (delivery_person_id, delivery_person_id, order_id))
+
+        # commit transaction
+        self.cursor.connection.commit()
+        print(f"Order {order_id} has been delivered.")
+
 
 
     # ORDER LIFELINE

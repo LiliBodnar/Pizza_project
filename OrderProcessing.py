@@ -264,6 +264,9 @@ class OrderProcessing:
                 exit()
 
     def process_order(cursor, account, items_ordered, is_birthday, coupon_discount, milestone):
+        """
+        Process the order, handle delivery assignment and manages the order's lifecycle.
+        """
         # Check for address and confirm delivery
         account_manager = AccountManagement(cursor)
         delivery_address = account_manager.check_address(account)
@@ -373,51 +376,56 @@ class OrderProcessing:
         
         cursor.connection.commit()
 
-        delivery_manager = DeliveryManagement(cursor)
+        # Step 3: Manage the order preparation and delivery
 
+        delivery_manager = DeliveryManagement(cursor)
+        # Simulate the 10-minute preparation time, order is 'Being prepared'
+        time.sleep(10 * 60)
+
+        # Assign the delivery after preparation
+        delivery_manager.assign_delivery(order_id)
+
+        #Start a timer for cancellation
+        cancel_timer_thread = threading.Thread(target=self.start_cancel_timer, args=(order_id,))
+        cancel_timer_thread.start()
+
+        print(f"Your order {order_id} has been placed successfully!")
         clear_screen()
         print("Thank you for your order! You have 5 minutes to cancel your order.")
         
+        print("\n1. View order details")
+        print("2. Cancel order")
+        print("3. Exit")
+        choice = input("Enter your choice: ")
 
-        # 4. Retrieve the order status and estimated delivery time
-        #order_status_info = delivery_manager.get_order_status(order_id)
+        clear_screen()
 
-        # 5. Show order status, estimated delivery time, and cancellation window
-        #if order_status_info:
-            #print(f"Order Status: {order_status_info['OrderStatus']}")
-            #print(f"Estimated Delivery Time: {order_status_info['EstimatedDeliveryTime']}")
-            #print(f"Remaining Time to Cancel: {order_status_info['RemainingTime']}")
+        if choice == '1':
+            delivery_manager.get_order_status(order_id)
+        elif choice == '2':
+            delivery_manager.cancel_order(order_id)
+        elif choice == '3':
+            print("Thank you for using Gusto d'Italia!")
+            exit()
 
-        # 6. Assign and group the order to a delivery person
-        #assignment_message = delivery_manager.assign_and_group_orders(order_id)
-        #print(assignment_message)
-        #order_processor = OrderProcessing(cursor)
+        print("2. Cancel order")
+        print("3. Exit")
+        choice = input("Enter your choice: ")
+        
+        if choice == '2':
+            print("Going back to menu...")
+        elif choice == '3':
+            print("Thank you for using Gusto d'Italia!")
+            exit()
 
-        # 7. Start a timer for cancellation, handling user input in a separate thread if needed
-        #cancel_timer_thread = threading.Thread(target=order_processor.start_cancel_timer, args=(order_id,))
-        #cancel_timer_thread.start()
-
-        print(f"Your order {order_id} has been placed successfully!")
         return
     
     def start_cancel_timer(self, order_id):
         """
-        Start a timer to handle order cancellation based on user input.
-
-        :param order_id: The ID of the order to monitor for cancellation.
+        Start a timer for order cancellation. The cancellation time is 5 minutes after placing an order.
         """
-        time.sleep(60)  # Wait for 5 minutes
-
-        delivery_manager = DeliveryManagement(self.cursor)
-
-        # After waiting, check if the order can still be canceled
-        remaining_info = delivery_manager.get_order_status(order_id)
-        if remaining_info and remaining_info['RemainingTime'] == "Thank you for ordering, the window for cancellation is now closed.":
-            print("You can no longer cancel your order.")
-        else:
-            # Check if user wants to cancel the order
-            user_input = input("Do you want to cancel your order? (yes/no): ")
-            if user_input.lower() == 'yes':
-                cancel_message = delivery_manager.cancel_order(order_id)
-                print(cancel_message)
+        time.sleep(5 * 60)  # Simulate a 5-minute cancellation window
+        
+        # After 5 minutes, the order can no longer be canceled
+        print("Order cancellation window is now closed.")
 
