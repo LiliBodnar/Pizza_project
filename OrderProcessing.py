@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import os
 import time
 import threading
+from typing import Self
 from Menu import display_menu
 from AccountManagement import AccountManagement
 from DeliveryManagement import DeliveryManagement
@@ -382,10 +383,10 @@ class OrderProcessing:
 
         delivery_manager = DeliveryManagement(cursor)
         # Simulate the 10-minute preparation time, order is 'Being prepared'
-        preparation_tikme_thread = threading.Thread(target=cursor.start_preparation(delivery_manager), args=(order_id,))
-        preparation_tikme_thread.start()
+        preparation_time_thread = threading.Thread(target=Self.start_preparation, args=(order_id,delivery_manager))
+        preparation_time_thread.start()
         #Start a timer for cancellation
-        cancel_timer_thread = threading.Thread(target=cursor.start_cancel_timer, args=(order_id,))
+        cancel_timer_thread = threading.Thread(target=Self.start_cancel_timer)
         cancel_timer_thread.start()
 
         clear_screen()
@@ -418,7 +419,7 @@ class OrderProcessing:
 
         return
     
-    def start_cancel_timer(self, order_id):
+    def start_cancel_timer(self):
         """
         Start a timer for order cancellation. The cancellation time is 5 minutes after placing an order.
         """
