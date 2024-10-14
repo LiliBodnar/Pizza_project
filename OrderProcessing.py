@@ -376,20 +376,18 @@ class OrderProcessing:
         
         cursor.connection.commit()
 
+        print(f"Your order {order_id} has been placed successfully!")
+
         # Step 3: Manage the order preparation and delivery
 
         delivery_manager = DeliveryManagement(cursor)
         # Simulate the 10-minute preparation time, order is 'Being prepared'
-        time.sleep(10 * 60)
-
-        # Assign the delivery after preparation
-        delivery_manager.assign_delivery(order_id)
-
+        preparation_tikme_thread = threading.Thread(target=cursor.start_preparation(delivery_manager), args=(order_id,))
+        preparation_tikme_thread.start()
         #Start a timer for cancellation
-        cancel_timer_thread = threading.Thread(target=self.start_cancel_timer, args=(order_id,))
+        cancel_timer_thread = threading.Thread(target=cursor.start_cancel_timer, args=(order_id,))
         cancel_timer_thread.start()
 
-        print(f"Your order {order_id} has been placed successfully!")
         clear_screen()
         print("Thank you for your order! You have 5 minutes to cancel your order.")
         
@@ -428,4 +426,13 @@ class OrderProcessing:
         
         # After 5 minutes, the order can no longer be canceled
         print("Order cancellation window is now closed.")
+
+    def start_preparation(self, order_id, delivery_manager):
+        """
+        Start a timer for order preparation. The preparation time is 10 minutes by default after placing the order.
+        """
+        time.sleep(10 * 60)  # Simulate a 10-minute cancellation window
+        
+        # Assign the delivery after preparation
+        delivery_manager.assign_and_group_orders(order_id)
 

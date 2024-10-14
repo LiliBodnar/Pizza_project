@@ -118,7 +118,7 @@ class DeliveryManagement:
         Assign and group orders based on the number of pizzas and proximity of order placement time.
         
         :param order_id: The ID of the current order to assign.
-        :return: Message wheter the order was successfully assigned or not.
+        Prints wheter the order was successfully assigned or not.
         """
         # 1. retrieve the order details
         self.cursor.execute("""
@@ -137,16 +137,16 @@ class DeliveryManagement:
             pizza_count = 0 
 
         if not order_details:
-            return "Order not found."
+            print("Order not found.")
        
         # 2. if the number of pizzas is 3 or more, assign the order to an available delivery person directly
         if pizza_count >= 3:
             delivery_person_id = self.find_available_delivery_person(area_id)
             if delivery_person_id:
                 self.assign_order_to_delivery_person(order_id, delivery_person_id)
-                return f"Order {order_id} was assigned to delivery person {delivery_person_id}."
+                print(f"Order {order_id} was assigned to delivery person {delivery_person_id}.")
             else:
-                return "Sorry, currently no delivery person is available in this area."
+                print("Sorry, currently no delivery person is available in this area.")
 
         # 3. check for other orders in the same area placed within 3-minutes
         self.cursor.execute("""
@@ -175,16 +175,14 @@ class DeliveryManagement:
                 if delivery_person_id:
                     # assign current order to the same delivery person
                     self.assign_order_to_delivery_person(order_id, delivery_person_id)
-                    return (f"Order {order_id} was assigned to delivery person {delivery_person_id} together with order {matched_order_id}")
+                    print(f"Order {order_id} was assigned to delivery person {delivery_person_id} together with order {matched_order_id}")
  #TODO DELETE "together with order {matched_order_id}" FROM RETURN MESSAGE AFTER TESTING
 
         # 5. no compatible grouping found, assign the current order to an available delivery person
         delivery_person_id = self.find_available_delivery_person(area_id)
         if delivery_person_id:
             self.assign_order_to_delivery_person(order_id, delivery_person_id)
-            return f"Order {order_id} assigned to delivery person {delivery_person_id}."
-        
-        print("6")
+            print(f"Order {order_id} assigned to delivery person {delivery_person_id}.")
         
         # 6. if no delivery person is available, generate an error message
         return "Sorry, currently no delivery person available in this area. Please wait."
