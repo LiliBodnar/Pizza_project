@@ -7,10 +7,9 @@ from Database import connect
 from enum import Enum
 
 def clear_screen():
-    # Check the operating system and clear the screen accordingly
-    if os.name == 'nt':  # 'nt' is for Windows
+    if os.name == 'nt':  
         os.system('cls')
-    else:  # For macOS and Linux
+    else: 
         os.system('clear')
 
 class Gender(Enum):
@@ -23,7 +22,6 @@ class EarningsReport:
 
     def generate_earnings_report(self, month, year, gender=None, min_age=None, max_age=None):
         
-        # Validate inputs
         if not (1 <= month <= 12):
             raise ValueError("Month must be between 1 and 12.")
         if year < 2024:
@@ -322,7 +320,6 @@ class EarningsReport:
         
         profit, total_earnings, total_customers, num_orders, num_items, num_pizzas, area_distribution, pizza_distribution = report
     
-        # Handle NaN or None values with default values
         total_earnings = np.nan_to_num(total_earnings, nan=0)
         profit = np.nan_to_num(profit, nan=0)
         total_customers = np.nan_to_num(total_customers, nan=0)
@@ -346,7 +343,6 @@ class EarningsReport:
 
         plt.figure(figsize=(12, 10))
 
-        # Plot pizzas vs. other items
         plt.subplot(2, 2, 1)
         if np.sum(sizes_items) > 0:
             plt.pie(sizes_items, labels=labels_items, autopct='%1.1f%%', startangle=140)
@@ -355,7 +351,6 @@ class EarningsReport:
         plt.axis('equal')
         plt.title('Pizzas vs. Other Items Ordered')
 
-        # Plot area distribution
         plt.subplot(2, 2, 2)
         if np.sum(area_counts) > 0:
             plt.pie(area_counts, labels=area_ids, autopct='%1.1f%%', startangle=140)
@@ -364,7 +359,6 @@ class EarningsReport:
         plt.axis('equal')
         plt.title('Customer Distribution by Area')
 
-        # Plot pizza types distribution
         plt.subplot(2, 2, 3)
         if np.sum(pizza_sizes) > 0:
             plt.pie(pizza_sizes, labels=pizza_labels, autopct='%1.1f%%', startangle=140)
@@ -380,7 +374,6 @@ class EarningsReport:
 
         months, profits, num_orders, total_male_customers, total_female_customers, area_distribution, revenues, age_distribution, pizza_distribution = report
         
-        # Handle NaN or None values with default values
         total_male_customers = np.nan_to_num(total_male_customers, nan=0)
         total_female_customers = np.nan_to_num(total_female_customers, nan=0)
         profits = np.nan_to_num([p for p in profits], nan=0)
@@ -396,11 +389,9 @@ class EarningsReport:
         pizza_labels = [row[0] for row in (pizza_distribution or [])]
         pizza_sizes = np.nan_to_num([row[1] for row in (pizza_distribution or [])], nan=0)
 
-        # Set up figure with gridspec for customized layout
         plt.figure(figsize=(14, 10))
         gs = gridspec.GridSpec(3, 2, height_ratios=[1, 1, 1.2])
 
-        # Bar chart for monthly profit
         plt.subplot(gs[0, 0])
         if np.sum(profits) > 0:
             plt.bar(months, profits, color='green')
@@ -411,7 +402,6 @@ class EarningsReport:
         plt.title('Profit per Month')
         plt.xticks(months)
 
-        # Bar chart for number of orders per month
         plt.subplot(gs[0, 1])
         if np.sum(num_orders) > 0:
             plt.bar(months, num_orders, color='blue')
@@ -422,7 +412,6 @@ class EarningsReport:
         plt.title('Number of Orders per Month')
         plt.xticks(months)
 
-        # Pie chart for gender distribution
         plt.subplot(gs[1, 0])
         sizes_customers = [total_male_customers, total_female_customers]
         if np.sum(sizes_customers) > 0:
@@ -432,7 +421,6 @@ class EarningsReport:
         plt.axis('equal')
         plt.title('Customer Gender Distribution')
 
-        # Pie chart for area distribution
         plt.subplot(gs[1, 1])
         if np.sum(area_counts) > 0:
             plt.pie(area_counts, labels=area_ids, autopct='%1.1f%%', startangle=140)
@@ -441,7 +429,6 @@ class EarningsReport:
         plt.axis('equal')
         plt.title('Customer Distribution by Area')
 
-        # Bar chart for age distribution
         plt.subplot(gs[2, 0])
         if np.sum(age_counts) > 0:
             plt.bar(age_groups, age_counts)
@@ -451,7 +438,6 @@ class EarningsReport:
         plt.xlabel('Age Group')
         plt.ylabel('Number of Customers')
 
-        # Pie chart for pizza distribution
         plt.subplot(gs[2, 1])
         if np.sum(pizza_sizes) > 0:
             plt.pie(pizza_sizes, labels=pizza_labels, autopct='%1.1f%%', startangle=140)

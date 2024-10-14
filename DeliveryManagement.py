@@ -255,7 +255,7 @@ class DeliveryManagement:
         """
         Automatically updates deliveries status after the delivery time has passed.
         """
-        time.sleep(1 * 20)  # 30-minute delivery time
+        time.sleep(3 * 20)  # 30-minute delivery time
         clear_screen()
       
         # update order status to 'Delivered'

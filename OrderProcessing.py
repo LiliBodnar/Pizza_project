@@ -406,7 +406,7 @@ class OrderProcessing:
     
     def start_cancel_timer(order_id):
         """Start a timer for order cancellation."""
-        time.sleep(1 * 20)  # Simulate a 5-minute cancellation window
+        time.sleep(2 * 20)  # Simulate a 5-minute cancellation window
         
         clear_screen()
         print("Order cancellation window is now closed.")
@@ -418,7 +418,7 @@ class OrderProcessing:
 
     def start_preparation(order_id, delivery_manager):
         """Start a timer for order preparation."""
-        time.sleep(2 * 20)  # Simulate a 10-minute preparation window
+        time.sleep(3 * 20)  # Simulate a 10-minute preparation window
         clear_screen()
         delivery_manager.assign_and_group_orders(order_id)
         DeliveryManagement.get_order_status(delivery_manager, order_id)

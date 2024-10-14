@@ -6,7 +6,6 @@ import datetime
 import os
 
 def clear_screen():
-    # Check the operating system and clear the screen accordingly
     if os.name == 'nt': 
         os.system('cls')
     else:  

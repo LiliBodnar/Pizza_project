@@ -1,9 +1,7 @@
 def display_menu(cursor):
-    # Fetch the menu items and their details from the database
     cursor.execute("SELECT ItemID, ItemName, ItemType FROM Item")
     items = cursor.fetchall()
 
-    # Create a dictionary to hold the ingredients for each item
     ingredients_dict = {}
     prices_dict = {}
     cursor.execute("""
@@ -16,11 +14,10 @@ def display_menu(cursor):
     for item_id, ingredient_id, ingredient_name, price in ingredient_list:
         if item_id not in ingredients_dict:
             ingredients_dict[item_id] = []
-            prices_dict[item_id] = 0  # Initialize the price for the item
+            prices_dict[item_id] = 0
         ingredients_dict[item_id].append(ingredient_name)
-        prices_dict[item_id] += price  # Sum the ingredient prices for each item
+        prices_dict[item_id] += price 
 
-    # Fetch dietary restrictions for ingredients
     ingredient_restrictions = {}
     cursor.execute("""
         SELECT i.IngredientID, rt.Vegan, rt.Vegetarian, rt.GlutenFree, rt.LactoseFree
@@ -42,9 +39,8 @@ def display_menu(cursor):
     print("------------------Menu:------------------")
     print("")
 
-    item_number = 1  # Start numbering the menu items
+    item_number = 1 
 
-    # Function to aggregate restrictions for an item
     def aggregate_restrictions(item_id):
         item_ingredients = [ingr for ingr in ingredient_list if ingr[0] == item_id]
         item_restrictions = {'Vegan': True, 'Vegetarian': True, 'GlutenFree': True, 'LactoseFree': True}
@@ -55,7 +51,6 @@ def display_menu(cursor):
             for item_id, ingredient_id, ingredient_name, price in item_ingredients:
                 ingr_restrictions = ingredient_restrictions.get(ingredient_id, {})
                 
-                # Update restrictions only if true for any ingredient
                 item_restrictions['Vegan'] = item_restrictions['Vegan'] and ingr_restrictions.get('Vegan', True)
                 item_restrictions['Vegetarian'] = item_restrictions['Vegetarian'] and ingr_restrictions.get('Vegetarian', True)
                 item_restrictions['GlutenFree'] = item_restrictions['GlutenFree'] and ingr_restrictions.get('GlutenFree', True)
@@ -63,20 +58,17 @@ def display_menu(cursor):
     
         return item_restrictions
 
-    # Display Pizzas
     pizza_items = [item for item in items if item[2] == 'Pizza']
     if pizza_items:
         print("Pizzas:")
         for item in pizza_items:
             item_id = item[0]
             item_name = item[1]
-            price = prices_dict.get(item_id, "N/A")  # Get the total price for the item
+            price = prices_dict.get(item_id, "N/A")  
             ingredients = ", ".join(ingredients_dict.get(item_id, []))
             
-            # Get the aggregate restrictions for the pizza
             restrictions = aggregate_restrictions(item_id)
             
-            # Prepare restriction labels
             restrictions_list = []
             if restrictions.get('Vegan'):
                 restrictions_list.append("VG")
@@ -93,11 +85,10 @@ def display_menu(cursor):
             else:
                 print(f"{item_number}. {item_name:<20} {restrictions_str:<20} €{price}")
 
-            print(f"   {ingredients}")  # Print ingredients below
+            print(f"   {ingredients}") 
             print("")
-            item_number += 1  # Increment the item number
+            item_number += 1 
 
-    # Display Drinks
     drink_items = [item for item in items if item[2] == 'Drink']
     if drink_items:
         print("\nDrinks:")
@@ -106,9 +97,8 @@ def display_menu(cursor):
             item_name = item[1]
             price = prices_dict.get(item_id, "N/A")
             print(f"{item_number}. {item_name:<40} €{price:.2f}")
-            item_number += 1  # Increment the item number
+            item_number += 1 
 
-    # Display Desserts
     dessert_items = [item for item in items if item[2] == 'Dessert']
     if dessert_items:
         print("\nDesserts:")
@@ -116,7 +106,6 @@ def display_menu(cursor):
             item_id = item[0]
             item_name = item[1]
             price = prices_dict.get(item_id, "N/A")
-            # Get the aggregate restrictions for the dessert
             restrictions = aggregate_restrictions(item_id)
             restrictions_list = []
             if restrictions.get('Vegetarian'):
@@ -130,6 +119,6 @@ def display_menu(cursor):
 
             restrictions_str = ", ".join(restrictions_list) if restrictions_list else " "
             print(f"{item_number}. {item_name:<20} {restrictions_str:<20} €{price:.2f}")
-            item_number += 1  # Increment the item number
+            item_number += 1  
 
-    print()  # New line for better readability
+    print() 

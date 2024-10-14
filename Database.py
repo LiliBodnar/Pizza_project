@@ -1,7 +1,6 @@
 import MySQLdb
 
 def connect():
-    # Establish the database connection
     return MySQLdb.connect(
         host="localhost",
         user="root",
