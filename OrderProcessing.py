@@ -385,12 +385,8 @@ class OrderProcessing:
         # Simulate the 10-minute preparation time, order is 'Being prepared'
         preparation_time_thread = threading.Thread(target=Self.start_preparation, args=(order_id,delivery_manager))
         preparation_time_thread.start()
-        #Start a timer for cancellation
-        cancel_timer_thread = threading.Thread(target=Self.start_cancel_timer)
-        cancel_timer_thread.start()
 
         clear_screen()
-        print("Thank you for your order! You have 5 minutes to cancel your order.")
         
         print("\n1. View order details")
         print("2. Cancel order")
@@ -419,21 +415,16 @@ class OrderProcessing:
 
         return
     
-    def start_cancel_timer(self):
-        """
-        Start a timer for order cancellation. The cancellation time is 5 minutes after placing an order.
-        """
-        time.sleep(5 * 60)  # Simulate a 5-minute cancellation window
-        
-        # After 5 minutes, the order can no longer be canceled
-        print("Order cancellation window is now closed.")
-
     def start_preparation(self, order_id, delivery_manager):
         """
-        Start a timer for order preparation. The preparation time is 10 minutes by default after placing the order.
+        Start a timer for order preparation. The preparation time is 10 minutes by default. After placing the order the customer has 5 minutes to cancel the order.
         """
-        time.sleep(10 * 60)  # Simulate a 10-minute cancellation window
+        print("Thank you for your order! You have 5 minutes to cancel your order.")
+        time.sleep(5 * 60)  # Simulate a 5-minute cancellation window
+        # After 5 minutes, the order can no longer be canceled
+        print("Order cancellation window is now closed.")
         
+        time.sleep(5 * 60) 
         # Assign the delivery after preparation
         delivery_manager.assign_and_group_orders(order_id)
 
