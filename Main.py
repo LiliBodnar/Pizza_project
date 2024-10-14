@@ -1,6 +1,6 @@
-from AccountManagement import AccountManagement  # Import the class for account management
-from OrderProcessing import OrderProcessing  # Import the class for order processing
-from Database import connect  # Import the function to connect to the database
+from AccountManagement import AccountManagement 
+from OrderProcessing import OrderProcessing 
+from Database import connect  
 from Menu import display_menu
 import datetime
 import os
