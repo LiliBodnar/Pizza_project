@@ -113,7 +113,7 @@ class DeliveryManagement:
         Assign and group orders based on the number of pizzas and proximity of order placement time.
         
         :param order_id: The ID of the current order to assign.
-        :return: Message wheter the order was successfully assigned or not.
+        Prints wheter the order was successfully assigned or not.
         """
         
         self.cursor.execute("""
